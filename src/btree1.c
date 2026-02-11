@@ -734,7 +734,7 @@ void free_record(record *r)
  */
 record *make_record(uint64_t value)
 {
-    record *new_record = (record *)alloc_record(sizeof(record));
+    record *new_record = alloc_record();
     if (new_record == NULL) {
         perror("Record creation.");
         exit(EXIT_FAILURE);
@@ -751,7 +751,7 @@ record *make_record(uint64_t value)
 node *make_node(void)
 {
     node *new_node;
-    new_node = alloc_node(sizeof(node));
+    new_node = alloc_node();
     if (new_node == NULL) {
         perror("Node creation.");
         exit(EXIT_FAILURE);
