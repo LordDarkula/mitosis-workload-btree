@@ -62,3 +62,8 @@ Run parameters:
  -l <numlookups>
  -o <order>
 ```
+
+Example: run workload single-threaded on NUMA 0 with 10 nodes and 10 lookups
+```sh
+$ ./bin/bench_btree_st -p 0 -- -n 10 -l 10
+```
