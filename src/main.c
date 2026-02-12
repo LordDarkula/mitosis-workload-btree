@@ -72,6 +72,26 @@ void signalhandler(int sig)
     exit(0);
 }
 
+static void pin_to_numa_node_cpus(int node) {
+    struct bitmask *cpus = numa_allocate_cpumask();
+    if (!cpus) {
+        perror("numa_allocate_cpumask");
+        exit(1);
+    }
+
+    // Fill mask with CPUs belonging to node
+    if (numa_node_to_cpus(node, cpus) != 0) {
+        fprintf(stderr, "Failed to get CPUs for node %d\n", node);
+        exit(1);
+    }
+
+    if (numa_sched_setaffinity(0, cpus) != 0) {
+        perror("sched_setaffinity");
+        exit(1);
+    }
+
+    numa_free_cpumask(cpus);
+}
 
 int main(int argc, char *argv[])
 {
@@ -146,6 +166,7 @@ int main(int argc, char *argv[])
     fprintf(opt_file_out, "</config>\n");
 
     /* setting the bind policy */
+    pin_to_numa_node_cpus(0);
     numa_set_strict(1);
     numa_set_bind_policy(1);
 

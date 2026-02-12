@@ -116,28 +116,6 @@
 size_t allocator_stat = 0;
 
 
-static void pin_to_numa_node_cpus(int node) {
-    struct bitmask *cpus = numa_allocate_cpumask();
-    if (!cpus) {
-        perror("numa_allocate_cpumask");
-        exit(1);
-    }
-
-    // Fill mask with CPUs belonging to node
-    if (numa_node_to_cpus(node, cpus) != 0) {
-        fprintf(stderr, "Failed to get CPUs for node %d\n", node);
-        exit(1);
-    }
-
-    if (numa_sched_setaffinity(0, cpus) != 0) {
-        perror("sched_setaffinity");
-        exit(1);
-    }
-
-    numa_free_cpumask(cpus);
-}
-
-
 ///> this allocates memory aligned to a large page size
 static inline void *allocate(size_t size, size_t alignment)
 {
