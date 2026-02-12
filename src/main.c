@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 {
     struct timeval tstart, tend;
     gettimeofday(&tstart, NULL);
+    int numa_node = 0;
 
     for (int i = 0; i < argc; i++) {
         printf("%s ", argv[i]);
@@ -111,12 +112,10 @@ int main(int argc, char *argv[])
 
     opt_file_out = stdout;
     int c;
-    while ((c = getopt(argc, argv, "o:h")) != -1) {
+    while ((c = getopt(argc, argv, "ho:p:")) != -1) {
         switch (c) {
-        case '-':
-            break;
         case 'h':
-            printf("usage: %s [-o FILE]\n", argv[0]);
+            printf("usage: %s [-o FILE] [-p NODE]\n", argv[0]);
             return 0;
         case 'o':
             opt_file_out = fopen(optarg, "a");
@@ -125,16 +124,27 @@ int main(int argc, char *argv[])
                 opt_file_out = stdout;
             }
             break;
+        case 'p':
+            numa_node = (int)strtol(optarg, NULL, 10);
+            break;
         case '?':
             switch (optopt) {
             case 'o':
                 fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                 return -1;
+            case 'p':
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+                return -1;
             default:
-                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
+                fprintf(stderr, "Unknown option.\n");
                 return -1;
             }
         }
+    }
+
+    if (numa_node > numa_max_node() || !numa_bitmask_isbitset(numa_all_nodes_ptr, numa_node)) {
+        fprintf(stderr, "ERROR: NUMA node %d is not available on this machine.\n", numa_node);
+        return -1;
     }
 
     int prog_argc = 0;
@@ -147,6 +157,7 @@ int main(int argc, char *argv[])
 
     for (int i = 0; i < argc; i++) {
         if (strcmp("--", argv[i]) == 0) {
+            // overwrite -- with executable name
             argv[i] = argv[0];
             prog_argv = &argv[i];
             prog_argc = argc - i;
@@ -165,8 +176,8 @@ int main(int argc, char *argv[])
 #endif
     fprintf(opt_file_out, "</config>\n");
 
-    /* setting the bind policy */
-    pin_to_numa_node_cpus(0);
+    /* setting the CPU and memory bind policy */
+    pin_to_numa_node_cpus(numa_node);
     numa_set_strict(1);
     numa_set_bind_policy(1);
 
