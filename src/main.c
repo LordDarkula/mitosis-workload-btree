@@ -28,11 +28,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <errno.h>
-
 #include <string.h>
 #include <fcntl.h>     /* open */
 #include <unistd.h>    /* exit */
