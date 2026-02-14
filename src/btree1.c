@@ -687,7 +687,7 @@ node *alloc_node()
     node *nd = free_nodes;
     free_nodes = nd->next;
 
-    memset(nd, 0, sizeof(nd));
+    memset(nd, 0, sizeof(node));
 
     return nd;
 }
