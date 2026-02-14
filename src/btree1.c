@@ -720,7 +720,7 @@ record *alloc_record()
     record *rec = free_recs;
     free_recs = rec->next;
 
-    memset(rec, 0, sizeof(*rec));
+    memset(rec, 0, sizeof(record));
 
     return rec;
 }
