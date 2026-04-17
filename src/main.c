@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 /**
  * MIT License
  * Copyright (c) 2020 Mitosis-Project
