@@ -21,10 +21,12 @@
  * SOFTWARE.
  */
 
+#include <linux/mempolicy.h>
+#include <numa.h>
+#include <numaif.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -36,7 +38,6 @@
 #include <sys/ioctl.h> /* ioctl */
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <numa.h>
 #include <time.h>
 #include <pthread.h>
 #include <signal.h>
