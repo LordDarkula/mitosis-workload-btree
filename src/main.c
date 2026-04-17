@@ -134,7 +134,8 @@ int main(int argc, char *argv[])
 {
     struct timeval tstart, tend;
     gettimeofday(&tstart, NULL);
-    int numa_node = 0;
+    int cpu_node = 0;
+    int mem_node = 0;
 
     for (int i = 0; i < argc; i++) {
         printf("%s ", argv[i]);
@@ -149,10 +150,10 @@ int main(int argc, char *argv[])
 
     opt_file_out = stdout;
     int c;
-    while ((c = getopt(argc, argv, "ho:p:")) != -1) {
+    while ((c = getopt(argc, argv, "ho:p:m:")) != -1) {
         switch (c) {
         case 'h':
-            printf("usage: %s [-o FILE] [-p NODE]\n", argv[0]);
+            printf("usage: %s [-o FILE] [-p CPU_NODE] [-m MEM_NODE]\n", argv[0]);
             return 0;
         case 'o':
             opt_file_out = fopen(optarg, "a");
@@ -162,7 +163,10 @@ int main(int argc, char *argv[])
             }
             break;
         case 'p':
-            numa_node = (int)strtol(optarg, NULL, 10);
+            cpu_node = (int)strtol(optarg, NULL, 10);
+            break;
+        case 'm':
+            mem_node = (int)strtol(optarg, NULL, 10);
             break;
         case '?':
             switch (optopt) {
@@ -172,6 +176,9 @@ int main(int argc, char *argv[])
             case 'p':
                 fprintf(stderr, "Option -%c requires an argument.\n", optopt);
                 return -1;
+            case 'm':
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+                return -1;
             default:
                 fprintf(stderr, "Unknown option.\n");
                 return -1;
@@ -179,8 +186,13 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (numa_node > numa_max_node() || !numa_bitmask_isbitset(numa_all_nodes_ptr, numa_node)) {
-        fprintf(stderr, "ERROR: NUMA node %d is not available on this machine.\n", numa_node);
+    if (cpu_node > numa_max_node() || !numa_bitmask_isbitset(numa_all_nodes_ptr, cpu_node)) {
+        fprintf(stderr, "ERROR: CPU NUMA node %d is not available on this machine.\n", cpu_node);
+        return -1;
+    }
+
+    if (mem_node > numa_max_node() || !numa_bitmask_isbitset(numa_all_nodes_ptr, mem_node)) {
+        fprintf(stderr, "ERROR: Memory NUMA node %d is not available on this machine.\n", mem_node);
         return -1;
     }
 
@@ -214,9 +226,10 @@ int main(int argc, char *argv[])
     fprintf(opt_file_out, "</config>\n");
 
     /* setting the CPU and memory bind policy */
-    pin_to_numa_node_cpus(numa_node);
+    pin_to_numa_node_cpus(cpu_node);
     numa_set_strict(1);
     numa_set_bind_policy(1);
+    set_mem_policy_bind_node(mem_node);
 
     struct sigaction sigact;
     sigset_t block_set;
