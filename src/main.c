@@ -76,13 +76,29 @@ static void pin_to_numa_node_cpus(int node) {
         exit(1);
     }
 
-    // Fill mask with CPUs belonging to node
     if (numa_node_to_cpus(node, cpus) != 0) {
-        fprintf(stderr, "Failed to get CPUs for node %d\n", node);
+        /* libnuma returns -1 on error, but errno is not always useful here. */
+        fprintf(stderr, "numa_node_to_cpus(%d) failed\n", node);
         exit(1);
     }
 
-    if (numa_sched_setaffinity(0, cpus) != 0) {
+    cpu_set_t set;
+    CPU_ZERO(&set);
+
+    int any = 0;
+    for (unsigned i = 0; i < cpus->size; i++) {
+        if (numa_bitmask_isbitset(cpus, i)) {
+            CPU_SET((int)i, &set);
+            any = 1;
+        }
+    }
+
+    if (!any) {
+        fprintf(stderr, "No CPUs found for NUMA node %d\n", node);
+        exit(1);
+    }
+
+    if (sched_setaffinity(0, sizeof(set), &set) != 0) {
         perror("sched_setaffinity");
         exit(1);
     }
