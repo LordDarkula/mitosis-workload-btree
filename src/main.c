@@ -109,6 +109,27 @@ static void pin_to_numa_node_cpus(int node) {
     numa_free_cpumask(cpus);
 }
 
+static void set_mem_policy_bind_node(int node) {
+    struct bitmask *nodes = numa_allocate_nodemask();
+    if (!nodes) {
+        perror("numa_allocate_nodemask");
+        exit(1);
+    }
+
+    numa_bitmask_clearall(nodes);
+    numa_bitmask_setbit(nodes, node);
+
+    /* maxnode is the number of bits in the nodemask. */
+    unsigned long maxnode = nodes->size;
+
+    if (set_mempolicy(MPOL_BIND, nodes->maskp, maxnode) != 0) {
+        perror("set_mempolicy(MPOL_BIND)");
+        exit(1);
+    }
+
+    numa_free_nodemask(nodes);
+}
+
 int main(int argc, char *argv[])
 {
     struct timeval tstart, tend;
