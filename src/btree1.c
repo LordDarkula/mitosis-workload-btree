@@ -117,7 +117,7 @@
 size_t allocator_stat = 0;
 extern int benchmark_mem_node;
 
-static inline void bind_allocation_to_mem_node(void *ptr, size_t size)
+static inline void apply_allocation_mem_policy(void *ptr, size_t size, unsigned flags)
 {
     long page_size = sysconf(_SC_PAGESIZE);
     if (page_size <= 0) {
@@ -140,9 +140,9 @@ static inline void bind_allocation_to_mem_node(void *ptr, size_t size)
     numa_bitmask_clearall(nodes);
     numa_bitmask_setbit(nodes, benchmark_mem_node);
 
-    if (mbind((void *)page_start, page_span, MPOL_BIND, nodes->maskp, nodes->size, 0) != 0) {
-        fprintf(stderr, "mbind(node=%d, size=%zu) failed: %s\n",
-                benchmark_mem_node, size, strerror(errno));
+    if (mbind((void *)page_start, page_span, MPOL_BIND, nodes->maskp, nodes->size, flags) != 0) {
+        fprintf(stderr, "mbind(node=%d, size=%zu, flags=%u) failed: %s\n",
+                benchmark_mem_node, size, flags, strerror(errno));
         exit(1);
     }
 
@@ -159,10 +159,11 @@ static inline void *allocate(size_t size, size_t alignment)
         exit(1);
     }
 
-    bind_allocation_to_mem_node(memptr, size);
+    apply_allocation_mem_policy(memptr, size, 0);
     allocator_stat += size;
 
     memset(memptr, 0, size);
+    apply_allocation_mem_policy(memptr, size, MPOL_MF_MOVE | MPOL_MF_STRICT);
     return memptr;
 }
 
@@ -176,10 +177,11 @@ static inline void *allocate_align64(size_t size)
         exit(1);
     }
 
-    bind_allocation_to_mem_node(memptr, size);
+    apply_allocation_mem_policy(memptr, size, 0);
     allocator_stat += size;
 
     memset(memptr, 0, size);
+    apply_allocation_mem_policy(memptr, size, MPOL_MF_MOVE | MPOL_MF_STRICT);
     return memptr;
 }
 
