@@ -51,6 +51,7 @@
 #include "config.h"
 
 FILE *opt_file_out = NULL;  ///< standard outpu
+int benchmark_mem_node = 0;
 
 extern int real_main(int argc, char *argv[]);
 
@@ -195,6 +196,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "ERROR: Memory NUMA node %d is not available on this machine.\n", mem_node);
         return -1;
     }
+
+    benchmark_mem_node = mem_node;
 
     int prog_argc = 0;
     char **prog_argv = NULL;

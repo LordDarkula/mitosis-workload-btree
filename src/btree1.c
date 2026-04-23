@@ -80,6 +80,7 @@
 #include <numaif.h>
 #include <sched.h>
 #include <stdbool.h>
+#include <errno.h>
 #ifdef _WIN32
 #    define bool char
 #    define false 0
@@ -114,6 +115,39 @@
 #define ALIGNMET (1UL << 21)
 
 size_t allocator_stat = 0;
+extern int benchmark_mem_node;
+
+static inline void bind_allocation_to_mem_node(void *ptr, size_t size)
+{
+    long page_size = sysconf(_SC_PAGESIZE);
+    if (page_size <= 0) {
+        fprintf(stderr, "sysconf(_SC_PAGESIZE) failed\n");
+        exit(1);
+    }
+
+    uintptr_t start = (uintptr_t)ptr;
+    uintptr_t page_start = start & ~((uintptr_t)page_size - 1);
+    size_t offset = (size_t)(start - page_start);
+    size_t span = offset + size;
+    size_t page_span = (span + (size_t)page_size - 1) & ~((size_t)page_size - 1);
+
+    struct bitmask *nodes = numa_allocate_nodemask();
+    if (!nodes) {
+        perror("numa_allocate_nodemask");
+        exit(1);
+    }
+
+    numa_bitmask_clearall(nodes);
+    numa_bitmask_setbit(nodes, benchmark_mem_node);
+
+    if (mbind((void *)page_start, page_span, MPOL_BIND, nodes->maskp, nodes->size, 0) != 0) {
+        fprintf(stderr, "mbind(node=%d, size=%zu) failed: %s\n",
+                benchmark_mem_node, size, strerror(errno));
+        exit(1);
+    }
+
+    numa_free_nodemask(nodes);
+}
 
 
 ///> this allocates memory aligned to a large page size
@@ -125,6 +159,7 @@ static inline void *allocate(size_t size, size_t alignment)
         exit(1);
     }
 
+    bind_allocation_to_mem_node(memptr, size);
     allocator_stat += size;
 
     memset(memptr, 0, size);
@@ -141,6 +176,7 @@ static inline void *allocate_align64(size_t size)
         exit(1);
     }
 
+    bind_allocation_to_mem_node(memptr, size);
     allocator_stat += size;
 
     memset(memptr, 0, size);
