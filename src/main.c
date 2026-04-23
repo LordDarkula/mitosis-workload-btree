@@ -230,8 +230,7 @@ int main(int argc, char *argv[])
 
     /* setting the CPU and memory bind policy */
     pin_to_numa_node_cpus(cpu_node);
-    numa_set_strict(1);
-    numa_set_bind_policy(1);
+
     set_mem_policy_bind_node(mem_node);
 
     struct sigaction sigact;

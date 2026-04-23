@@ -91,6 +91,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <sys/mman.h>
 #include <sys/time.h>
 #include <string.h>
 
@@ -149,15 +150,58 @@ static inline void apply_allocation_mem_policy(void *ptr, size_t size, unsigned 
     numa_free_nodemask(nodes);
 }
 
+static inline void *map_aligned_allocation(size_t size, size_t alignment)
+{
+    long page_size = sysconf(_SC_PAGESIZE);
+    if (page_size <= 0) {
+        fprintf(stderr, "sysconf(_SC_PAGESIZE) failed\n");
+        exit(1);
+    }
+
+    size_t page_size_u = (size_t)page_size;
+    size_t map_size = (size + page_size_u - 1) & ~(page_size_u - 1);
+    if (alignment <= page_size_u) {
+        void *mapping = mmap(NULL, map_size, PROT_READ | PROT_WRITE,
+                             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (mapping == MAP_FAILED) {
+            perror("mmap");
+            exit(1);
+        }
+
+        return mapping;
+    }
+
+    size_t reserve_size = map_size + alignment - page_size_u;
+    void *reserve = mmap(NULL, reserve_size, PROT_READ | PROT_WRITE,
+                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (reserve == MAP_FAILED) {
+        perror("mmap");
+        exit(1);
+    }
+
+    uintptr_t base = (uintptr_t)reserve;
+    uintptr_t aligned = (base + alignment - 1) & ~((uintptr_t)alignment - 1);
+    size_t prefix = (size_t)(aligned - base);
+    size_t suffix = reserve_size - prefix - map_size;
+
+    if (prefix > 0 && munmap((void *)base, prefix) != 0) {
+        perror("munmap");
+        exit(1);
+    }
+
+    if (suffix > 0 && munmap((void *)(aligned + map_size), suffix) != 0) {
+        perror("munmap");
+        exit(1);
+    }
+
+    return (void *)aligned;
+}
+
 
 ///> this allocates memory aligned to a large page size
 static inline void *allocate(size_t size, size_t alignment)
 {
-    void *memptr;
-    if (posix_memalign(&memptr, alignment, size)) {
-        printf("ENOMEM\n");
-        exit(1);
-    }
+    void *memptr = map_aligned_allocation(size, alignment);
 
     apply_allocation_mem_policy(memptr, size, 0);
     allocator_stat += size;
